@@ -6,3 +6,6 @@ edition = "2018"
 
 [dependencies]
 raw-window-handle = "0.3.3"
+
+[dev-dependencies]
+winit = "0.22.2"
