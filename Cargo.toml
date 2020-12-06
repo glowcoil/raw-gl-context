@@ -19,3 +19,4 @@ x11 = { version = "2.3", features = ["xlib", "glx"] }
 [dev-dependencies]
 gl = "0.14.0"
 winit = "0.22.2"
+baseview = { path = "../baseview" }
