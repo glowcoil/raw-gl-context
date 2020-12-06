@@ -73,6 +73,12 @@ impl GlContext {
         }
     }
 
+    pub fn make_not_current(&self) {
+        unsafe {
+            wglMakeCurrent(self.hdc, std::ptr::null_mut());
+        }
+    }
+
     pub fn get_proc_address(&self, symbol: &str) -> *const c_void {
         let symbol = CString::new(symbol).unwrap();
         unsafe { GetProcAddress(self.gl_library, symbol.as_ptr()) as *const c_void }
