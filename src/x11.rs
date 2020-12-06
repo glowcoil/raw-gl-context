@@ -99,6 +99,12 @@ impl GlContext {
         }
     }
 
+    pub fn make_not_current(&self) {
+        unsafe {
+            glx::glXMakeCurrent(self.display, 0, std::ptr::null_mut());
+        }
+    }
+
     pub fn get_proc_address(&self, symbol: &str) -> *const c_void {
         get_proc_address(symbol)
     }

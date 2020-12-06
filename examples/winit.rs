@@ -26,12 +26,15 @@ fn main() {
                 *control_flow = ControlFlow::Exit;
             }
             winit::event::Event::RedrawRequested(_) => {
+                context.make_current();
+
                 unsafe {
                     gl::ClearColor(1.0, 0.0, 1.0, 1.0);
                     gl::Clear(gl::COLOR_BUFFER_BIT);
                 }
 
                 context.swap_buffers();
+                context.make_not_current();
             }
             _ => {}
         }
