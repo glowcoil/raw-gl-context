@@ -9,8 +9,6 @@ struct Example {
 }
 
 impl WindowHandler for Example {
-    type Message = ();
-
     fn on_frame(&mut self) {
         self.context.make_current();
 
@@ -29,8 +27,6 @@ impl WindowHandler for Example {
             Event::Window(e) => println!("Window event: {:?}", e),
         }
     }
-
-    fn on_message(&mut self, _window: &mut Window, _message: Self::Message) {}
 }
 
 fn main() {
@@ -38,15 +34,13 @@ fn main() {
         title: "baseview".into(),
         size: baseview::Size::new(512.0, 512.0),
         scale: WindowScalePolicy::SystemScaleFactor,
-        parent: baseview::Parent::None,
     };
 
-    let handle = Window::open(window_open_options, |window| {
+    Window::open_blocking(window_open_options, |window| {
         let context = GlContext::create(window.raw_window_handle()).unwrap();
         context.make_current();
         gl::load_with(|symbol| context.get_proc_address(symbol) as *const _);
 
         Example { context }
     });
-    handle.1.unwrap().app_run_blocking();
 }
