@@ -9,7 +9,7 @@ fn main() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
 
-    let context = GlContext::create(window.raw_window_handle()).unwrap();
+    let context = GlContext::create(&window).unwrap();
 
     context.make_current();
 

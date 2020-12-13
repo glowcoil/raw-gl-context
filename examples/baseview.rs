@@ -37,7 +37,7 @@ fn main() {
     };
 
     Window::open_blocking(window_open_options, |window| {
-        let context = GlContext::create(window.raw_window_handle()).unwrap();
+        let context = GlContext::create(window).unwrap();
         context.make_current();
         gl::load_with(|symbol| context.get_proc_address(symbol) as *const _);
 

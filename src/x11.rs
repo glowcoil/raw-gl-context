@@ -1,7 +1,7 @@
 use std::ffi::{c_void, CString};
 use std::os::raw::{c_int, c_ulong};
 
-use raw_window_handle::RawWindowHandle;
+use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 
 use x11::glx;
 use x11::xlib;
@@ -26,8 +26,8 @@ pub struct GlContext {
 }
 
 impl GlContext {
-    pub fn create(raw_window_handle: RawWindowHandle) -> Result<GlContext, ()> {
-        let handle = if let RawWindowHandle::Xlib(handle) = raw_window_handle {
+    pub fn create(parent: &impl HasRawWindowHandle) -> Result<GlContext, ()> {
+        let handle = if let RawWindowHandle::Xlib(handle) = parent.raw_window_handle() {
             handle
         } else {
             return Err(());

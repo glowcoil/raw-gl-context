@@ -1,6 +1,6 @@
 use std::ffi::{c_void, CString};
 
-use raw_window_handle::RawWindowHandle;
+use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 
 use winapi::shared::minwindef::HMODULE;
 use winapi::shared::windef::{HDC, HGLRC, HWND};
@@ -20,8 +20,8 @@ pub struct GlContext {
 }
 
 impl GlContext {
-    pub fn create(raw_window_handle: RawWindowHandle) -> Result<GlContext, ()> {
-        let handle = if let RawWindowHandle::Windows(handle) = raw_window_handle {
+    pub fn create(parent: &impl HasRawWindowHandle) -> Result<GlContext, ()> {
+        let handle = if let RawWindowHandle::Windows(handle) = parent.raw_window_handle() {
             handle
         } else {
             return Err(());
