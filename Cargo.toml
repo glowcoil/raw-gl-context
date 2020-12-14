@@ -16,6 +16,11 @@ winapi = { version = "0.3.8", features = ["libloaderapi", "minwindef", "windef",
 [target.'cfg(target_os="linux")'.dependencies]
 x11 = { version = "2.3", features = ["xlib", "glx"] }
 
+[target.'cfg(target_os="macos")'.dependencies]
+cocoa = "0.24.0"
+objc = "0.2.7"
+core-foundation = "0.9.1"
+
 [dev-dependencies]
 gl = "0.14.0"
 winit = "0.22.2"
