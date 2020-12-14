@@ -6,11 +6,20 @@ use winapi::shared::minwindef::HMODULE;
 use winapi::shared::windef::{HDC, HGLRC, HWND};
 use winapi::um::libloaderapi::{GetProcAddress, LoadLibraryA};
 use winapi::um::wingdi::{
-    wglCreateContext, wglDeleteContext, wglMakeCurrent, ChoosePixelFormat, SetPixelFormat,
-    SwapBuffers, PFD_DOUBLEBUFFER, PFD_DRAW_TO_WINDOW, PFD_MAIN_PLANE, PFD_SUPPORT_OPENGL,
-    PFD_TYPE_RGBA, PIXELFORMATDESCRIPTOR,
+    wglCreateContext, wglDeleteContext, wglGetProcAddress, wglMakeCurrent, ChoosePixelFormat,
+    SetPixelFormat, SwapBuffers, PFD_DOUBLEBUFFER, PFD_DRAW_TO_WINDOW, PFD_MAIN_PLANE,
+    PFD_SUPPORT_OPENGL, PFD_TYPE_RGBA, PIXELFORMATDESCRIPTOR,
 };
 use winapi::um::winuser::{GetDC, ReleaseDC};
+
+// See https://www.opengl.org/registry/specs/ARB/wgl_create_context.txt
+type WglCreateContextAttribsARB = extern "system" fn(HDC, HGLRC, *const i32) -> HGLRC;
+
+const WGL_CONTEXT_MAJOR_VERSION_ARB: i32 = 0x2091;
+const WGL_CONTEXT_MINOR_VERSION_ARB: i32 = 0x2092;
+const WGL_CONTEXT_PROFILE_MASK_ARB: i32 = 0x9126;
+
+const WGL_CONTEXT_CORE_PROFILE_BIT_ARB: i32 = 0x00000001;
 
 pub struct GlContext {
     hwnd: HWND,
@@ -32,31 +41,54 @@ impl GlContext {
 
             let hdc = GetDC(hwnd);
 
-            let mut pfd: PIXELFORMATDESCRIPTOR = std::mem::zeroed();
-            pfd.nSize = std::mem::size_of::<PIXELFORMATDESCRIPTOR>() as u16;
-            pfd.nVersion = 1;
-            pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
-            pfd.iPixelType = PFD_TYPE_RGBA;
-            pfd.cColorBits = 32;
-            pfd.cDepthBits = 24;
-            pfd.cStencilBits = 8;
-            pfd.iLayerType = PFD_MAIN_PLANE;
+            let pfd = PIXELFORMATDESCRIPTOR {
+                nSize: std::mem::size_of::<PIXELFORMATDESCRIPTOR>() as u16,
+                nVersion: 1,
+                dwFlags: PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
+                iPixelType: PFD_TYPE_RGBA,
+                cColorBits: 32,
+                cDepthBits: 24,
+                cStencilBits: 8,
+                iLayerType: PFD_MAIN_PLANE,
+                ..std::mem::zeroed()
+            };
 
-            let pf_id: i32 = ChoosePixelFormat(hdc, &pfd);
-            if pf_id == 0 {
+            if SetPixelFormat(hdc, ChoosePixelFormat(hdc, &pfd), &pfd) == 0 {
                 return Err(());
             }
 
-            if SetPixelFormat(hdc, pf_id, &pfd) == 0 {
+            let hglrc_tmp = wglCreateContext(hdc);
+            if hglrc_tmp == std::ptr::null_mut() {
                 return Err(());
             }
 
-            let hglrc = wglCreateContext(hdc);
-            if hglrc == 0 as HGLRC {
+            if wglMakeCurrent(hdc, hglrc_tmp) == 0 {
+                wglDeleteContext(hglrc_tmp);
                 return Err(());
             }
 
-            let gl_library = LoadLibraryA("opengl32.dll\0".as_ptr() as *const i8);
+            #[allow(non_snake_case)]
+            let wglCreateContextAttribsARB: WglCreateContextAttribsARB = std::mem::transmute(
+                wglGetProcAddress(CString::new("wglCreateContextAttribsARB").unwrap().as_ptr()),
+            );
+
+            wglMakeCurrent(hdc, std::ptr::null_mut());
+            wglDeleteContext(hglrc_tmp);
+
+            #[rustfmt::skip]
+            let ctx_attribs = [
+                WGL_CONTEXT_MAJOR_VERSION_ARB, 3,
+                WGL_CONTEXT_MINOR_VERSION_ARB, 2,
+                WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
+                0
+            ];
+
+            let hglrc = wglCreateContextAttribsARB(hdc, std::ptr::null_mut(), ctx_attribs.as_ptr());
+            if hglrc == std::ptr::null_mut() {
+                return Err(());
+            }
+
+            let gl_library = LoadLibraryA(CString::new("opengl32.dll").unwrap().as_ptr());
 
             Ok(GlContext {
                 hwnd,
@@ -81,7 +113,12 @@ impl GlContext {
 
     pub fn get_proc_address(&self, symbol: &str) -> *const c_void {
         let symbol = CString::new(symbol).unwrap();
-        unsafe { GetProcAddress(self.gl_library, symbol.as_ptr()) as *const c_void }
+        let addr = unsafe { wglGetProcAddress(symbol.as_ptr()) as *const c_void };
+        if !addr.is_null() {
+            addr
+        } else {
+            unsafe { GetProcAddress(self.gl_library, symbol.as_ptr()) as *const c_void }
+        }
     }
 
     pub fn swap_buffers(&self) {
