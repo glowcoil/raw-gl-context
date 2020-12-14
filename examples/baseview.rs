@@ -1,7 +1,5 @@
 use raw_gl_context::GlContext;
 
-use raw_window_handle::HasRawWindowHandle;
-
 use baseview::{Event, Window, WindowHandler, WindowScalePolicy};
 
 struct Example {
