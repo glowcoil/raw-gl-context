@@ -8,8 +8,8 @@ use winapi::shared::windef::{HDC, HGLRC, HWND};
 use winapi::um::libloaderapi::{GetProcAddress, LoadLibraryA};
 use winapi::um::wingdi::{
     wglCreateContext, wglDeleteContext, wglGetProcAddress, wglMakeCurrent, ChoosePixelFormat,
-    SetPixelFormat, SwapBuffers, PFD_DOUBLEBUFFER, PFD_DRAW_TO_WINDOW, PFD_MAIN_PLANE,
-    PFD_SUPPORT_OPENGL, PFD_TYPE_RGBA, PIXELFORMATDESCRIPTOR,
+    DescribePixelFormat, SetPixelFormat, SwapBuffers, PFD_DOUBLEBUFFER, PFD_DRAW_TO_WINDOW,
+    PFD_MAIN_PLANE, PFD_SUPPORT_OPENGL, PFD_TYPE_RGBA, PIXELFORMATDESCRIPTOR,
 };
 use winapi::um::winuser::{
     CreateWindowExW, DefWindowProcW, DestroyWindow, GetDC, RegisterClassW, ReleaseDC, CS_OWNDC,
@@ -26,6 +26,25 @@ const WGL_CONTEXT_MINOR_VERSION_ARB: i32 = 0x2092;
 const WGL_CONTEXT_PROFILE_MASK_ARB: i32 = 0x9126;
 
 const WGL_CONTEXT_CORE_PROFILE_BIT_ARB: i32 = 0x00000001;
+
+// See https://www.khronos.org/registry/OpenGL/extensions/ARB/WGL_ARB_pixel_format.txt
+type WglChoosePixelFormatARB =
+    extern "system" fn(HDC, *const i32, *const f32, u32, *mut i32, *mut u32) -> i32;
+
+const WGL_DRAW_TO_WINDOW_ARB: i32 = 0x2001;
+const WGL_ACCELERATION_ARB: i32 = 0x2003;
+const WGL_SUPPORT_OPENGL_ARB: i32 = 0x2010;
+const WGL_DOUBLE_BUFFER_ARB: i32 = 0x2011;
+const WGL_PIXEL_TYPE_ARB: i32 = 0x2013;
+const WGL_RED_BITS_ARB: i32 = 0x2015;
+const WGL_GREEN_BITS_ARB: i32 = 0x2017;
+const WGL_BLUE_BITS_ARB: i32 = 0x2019;
+const WGL_ALPHA_BITS_ARB: i32 = 0x201B;
+const WGL_DEPTH_BITS_ARB: i32 = 0x2022;
+const WGL_STENCIL_BITS_ARB: i32 = 0x2023;
+
+const WGL_FULL_ACCELERATION_ARB: i32 = 0x2027;
+const WGL_TYPE_RGBA_ARB: i32 = 0x202B;
 
 pub struct GlContext {
     hwnd: HWND,
@@ -117,6 +136,11 @@ impl GlContext {
                 wglGetProcAddress(CString::new("wglCreateContextAttribsARB").unwrap().as_ptr()),
             );
 
+            #[allow(non_snake_case)]
+            let wglChoosePixelFormatARB: WglChoosePixelFormatARB = std::mem::transmute(
+                wglGetProcAddress(CString::new("wglChoosePixelFormatARB").unwrap().as_ptr()),
+            );
+
             wglMakeCurrent(hdc_tmp, std::ptr::null_mut());
             ReleaseDC(hwnd_tmp, hdc_tmp);
             DestroyWindow(hwnd_tmp);
@@ -127,19 +151,41 @@ impl GlContext {
 
             let hdc = GetDC(hwnd);
 
-            let pfd = PIXELFORMATDESCRIPTOR {
-                nSize: std::mem::size_of::<PIXELFORMATDESCRIPTOR>() as u16,
-                nVersion: 1,
-                dwFlags: PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
-                iPixelType: PFD_TYPE_RGBA,
-                cColorBits: 32,
-                cDepthBits: 24,
-                cStencilBits: 8,
-                iLayerType: PFD_MAIN_PLANE,
-                ..std::mem::zeroed()
-            };
+            #[rustfmt::skip]
+            let pixel_format_attribs = [
+                WGL_DRAW_TO_WINDOW_ARB, 1,
+                WGL_SUPPORT_OPENGL_ARB, 1,
+                WGL_DOUBLE_BUFFER_ARB, 1,
+                WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB,
+                WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB,
+                WGL_RED_BITS_ARB, 8,
+                WGL_GREEN_BITS_ARB, 8,
+                WGL_BLUE_BITS_ARB, 8,
+                WGL_ALPHA_BITS_ARB, 8,
+                WGL_DEPTH_BITS_ARB, 24,
+                WGL_STENCIL_BITS_ARB, 8,
+                0,
+            ];
 
-            SetPixelFormat(hdc, ChoosePixelFormat(hdc, &pfd), &pfd);
+            let mut pixel_format = 0;
+            let mut num_formats = 0;
+            wglChoosePixelFormatARB(
+                hdc,
+                pixel_format_attribs.as_ptr(),
+                std::ptr::null(),
+                1,
+                &mut pixel_format,
+                &mut num_formats,
+            );
+
+            let mut pfd: PIXELFORMATDESCRIPTOR = std::mem::zeroed();
+            DescribePixelFormat(
+                hdc,
+                pixel_format,
+                std::mem::size_of::<PIXELFORMATDESCRIPTOR>() as u32,
+                &mut pfd,
+            );
+            SetPixelFormat(hdc, pixel_format, &pfd);
 
             #[rustfmt::skip]
             let ctx_attribs = [
