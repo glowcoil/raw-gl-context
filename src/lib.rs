@@ -57,13 +57,21 @@ pub enum Profile {
     Core,
 }
 
+#[derive(Debug)]
+pub enum GlError {
+    InvalidWindowHandle,
+}
+
 pub struct GlContext {
     context: platform::GlContext,
     phantom: PhantomData<*mut ()>,
 }
 
 impl GlContext {
-    pub fn create(parent: &impl HasRawWindowHandle, config: GlConfig) -> Result<GlContext, ()> {
+    pub fn create(
+        parent: &impl HasRawWindowHandle,
+        config: GlConfig,
+    ) -> Result<GlContext, GlError> {
         platform::GlContext::create(parent, config).map(|context| GlContext {
             context,
             phantom: PhantomData,

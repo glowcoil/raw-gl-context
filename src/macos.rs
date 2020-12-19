@@ -17,7 +17,7 @@ use core_foundation::string::CFString;
 
 use objc::{msg_send, sel, sel_impl};
 
-use crate::GlConfig;
+use crate::{GlConfig, GlError};
 
 pub struct GlContext {
     view: id,
@@ -25,15 +25,18 @@ pub struct GlContext {
 }
 
 impl GlContext {
-    pub fn create(parent: &impl HasRawWindowHandle, config: GlConfig) -> Result<GlContext, ()> {
+    pub fn create(
+        parent: &impl HasRawWindowHandle,
+        config: GlConfig,
+    ) -> Result<GlContext, GlError> {
         let handle = if let RawWindowHandle::MacOS(handle) = parent.raw_window_handle() {
             handle
         } else {
-            return Err(());
+            return Err(GlError::InvalidWindowHandle);
         };
 
         if handle.ns_view.is_null() {
-            return Err(());
+            return Err(GlError::InvalidWindowHandle);
         }
 
         let parent_view = handle.ns_view as id;
