@@ -60,6 +60,7 @@ pub enum Profile {
 #[derive(Debug)]
 pub enum GlError {
     InvalidWindowHandle,
+    CreationFailed,
 }
 
 pub struct GlContext {

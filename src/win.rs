@@ -1,4 +1,5 @@
-use std::ffi::{c_void, CString};
+use std::ffi::{c_void, CString, OsStr};
+use std::os::windows::ffi::OsStrExt;
 
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 
@@ -10,7 +11,10 @@ use winapi::um::wingdi::{
     SetPixelFormat, SwapBuffers, PFD_DOUBLEBUFFER, PFD_DRAW_TO_WINDOW, PFD_MAIN_PLANE,
     PFD_SUPPORT_OPENGL, PFD_TYPE_RGBA, PIXELFORMATDESCRIPTOR,
 };
-use winapi::um::winuser::{GetDC, ReleaseDC};
+use winapi::um::winuser::{
+    CreateWindowExW, DefWindowProcW, DestroyWindow, GetDC, RegisterClassW, ReleaseDC, CS_OWNDC,
+    CW_USEDEFAULT, WNDCLASSW,
+};
 
 use crate::{GlConfig, GlError};
 
@@ -46,6 +50,79 @@ impl GlContext {
         }
 
         unsafe {
+            // Create temporary window and context to load function pointers
+
+            let mut class_name: Vec<u16> =
+                OsStr::new("raw-gl-context-window").encode_wide().collect();
+            class_name.push(0);
+
+            let wnd_class = WNDCLASSW {
+                style: CS_OWNDC,
+                lpfnWndProc: Some(DefWindowProcW),
+                hInstance: std::ptr::null_mut(),
+                lpszClassName: class_name.as_ptr(),
+                ..std::mem::zeroed()
+            };
+
+            // Ignore errors, since class might be registered multiple times
+            let window_class = RegisterClassW(&wnd_class);
+
+            let hwnd_tmp = CreateWindowExW(
+                0,
+                window_class as *const u16,
+                class_name.as_ptr(),
+                0,
+                CW_USEDEFAULT,
+                CW_USEDEFAULT,
+                CW_USEDEFAULT,
+                CW_USEDEFAULT,
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+            );
+
+            if hwnd_tmp.is_null() {
+                return Err(GlError::CreationFailed);
+            }
+
+            let hdc_tmp = GetDC(hwnd_tmp);
+
+            let pfd_tmp = PIXELFORMATDESCRIPTOR {
+                nSize: std::mem::size_of::<PIXELFORMATDESCRIPTOR>() as u16,
+                nVersion: 1,
+                dwFlags: PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
+                iPixelType: PFD_TYPE_RGBA,
+                cColorBits: 32,
+                cAlphaBits: 8,
+                cDepthBits: 24,
+                cStencilBits: 8,
+                iLayerType: PFD_MAIN_PLANE,
+                ..std::mem::zeroed()
+            };
+
+            SetPixelFormat(hdc_tmp, ChoosePixelFormat(hdc_tmp, &pfd_tmp), &pfd_tmp);
+
+            let hglrc_tmp = wglCreateContext(hdc_tmp);
+            if hglrc_tmp.is_null() {
+                ReleaseDC(hwnd_tmp, hdc_tmp);
+                DestroyWindow(hwnd_tmp);
+                return Err(GlError::CreationFailed);
+            }
+
+            wglMakeCurrent(hdc_tmp, hglrc_tmp);
+
+            #[allow(non_snake_case)]
+            let wglCreateContextAttribsARB: WglCreateContextAttribsARB = std::mem::transmute(
+                wglGetProcAddress(CString::new("wglCreateContextAttribsARB").unwrap().as_ptr()),
+            );
+
+            wglMakeCurrent(hdc_tmp, std::ptr::null_mut());
+            ReleaseDC(hwnd_tmp, hdc_tmp);
+            DestroyWindow(hwnd_tmp);
+
+            // Create actual context
+
             let hwnd = handle.hwnd as HWND;
 
             let hdc = GetDC(hwnd);
@@ -62,27 +139,7 @@ impl GlContext {
                 ..std::mem::zeroed()
             };
 
-            if SetPixelFormat(hdc, ChoosePixelFormat(hdc, &pfd), &pfd) == 0 {
-                return Err(());
-            }
-
-            let hglrc_tmp = wglCreateContext(hdc);
-            if hglrc_tmp == std::ptr::null_mut() {
-                return Err(());
-            }
-
-            if wglMakeCurrent(hdc, hglrc_tmp) == 0 {
-                wglDeleteContext(hglrc_tmp);
-                return Err(());
-            }
-
-            #[allow(non_snake_case)]
-            let wglCreateContextAttribsARB: WglCreateContextAttribsARB = std::mem::transmute(
-                wglGetProcAddress(CString::new("wglCreateContextAttribsARB").unwrap().as_ptr()),
-            );
-
-            wglMakeCurrent(hdc, std::ptr::null_mut());
-            wglDeleteContext(hglrc_tmp);
+            SetPixelFormat(hdc, ChoosePixelFormat(hdc, &pfd), &pfd);
 
             #[rustfmt::skip]
             let ctx_attribs = [
@@ -94,7 +151,7 @@ impl GlContext {
 
             let hglrc = wglCreateContextAttribsARB(hdc, std::ptr::null_mut(), ctx_attribs.as_ptr());
             if hglrc == std::ptr::null_mut() {
-                return Err(());
+                return Err(GlError::CreationFailed);
             }
 
             let gl_library = LoadLibraryA(CString::new("opengl32.dll").unwrap().as_ptr());
