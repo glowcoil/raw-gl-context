@@ -12,6 +12,8 @@ use winapi::um::wingdi::{
 };
 use winapi::um::winuser::{GetDC, ReleaseDC};
 
+use crate::GlConfig;
+
 // See https://www.khronos.org/registry/OpenGL/extensions/ARB/WGL_ARB_create_context.txt
 type WglCreateContextAttribsARB = extern "system" fn(HDC, HGLRC, *const i32) -> HGLRC;
 
@@ -29,7 +31,7 @@ pub struct GlContext {
 }
 
 impl GlContext {
-    pub fn create(parent: &impl HasRawWindowHandle) -> Result<GlContext, ()> {
+    pub fn create(parent: &impl HasRawWindowHandle, config: GlConfig) -> Result<GlContext, ()> {
         let handle = if let RawWindowHandle::Windows(handle) = parent.raw_window_handle() {
             handle
         } else {

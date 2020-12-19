@@ -6,6 +6,8 @@ use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 use x11::glx;
 use x11::xlib;
 
+use crate::GlConfig;
+
 type GlXCreateContextAttribsARBProc = unsafe extern "C" fn(
     dpy: *mut xlib::Display,
     fbc: glx::GLXFBConfig,
@@ -26,7 +28,7 @@ pub struct GlContext {
 }
 
 impl GlContext {
-    pub fn create(parent: &impl HasRawWindowHandle) -> Result<GlContext, ()> {
+    pub fn create(parent: &impl HasRawWindowHandle, config: GlConfig) -> Result<GlContext, ()> {
         let handle = if let RawWindowHandle::Xlib(handle) = parent.raw_window_handle() {
             handle
         } else {

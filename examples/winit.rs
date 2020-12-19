@@ -1,4 +1,4 @@
-use raw_gl_context::GlContext;
+use raw_gl_context::{GlConfig, GlContext};
 
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::WindowBuilder;
@@ -7,7 +7,7 @@ fn main() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
 
-    let context = GlContext::create(&window).unwrap();
+    let context = GlContext::create(&window, GlConfig::default()).unwrap();
 
     context.make_current();
 

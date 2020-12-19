@@ -1,4 +1,4 @@
-use raw_gl_context::GlContext;
+use raw_gl_context::{GlConfig, GlContext};
 
 use baseview::{Event, Window, WindowHandler, WindowScalePolicy};
 
@@ -35,7 +35,7 @@ fn main() {
     };
 
     Window::open_blocking(window_open_options, |window| {
-        let context = GlContext::create(window).unwrap();
+        let context = GlContext::create(window, GlConfig::default()).unwrap();
         context.make_current();
         gl::load_with(|symbol| context.get_proc_address(symbol) as *const _);
 

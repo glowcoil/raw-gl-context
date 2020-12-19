@@ -18,14 +18,53 @@ mod macos;
 #[cfg(target_os = "macos")]
 use macos as platform;
 
+pub struct GlConfig {
+    pub version: (u8, u8),
+    pub profile: Profile,
+    pub red_bits: u8,
+    pub blue_bits: u8,
+    pub green_bits: u8,
+    pub alpha_bits: u8,
+    pub depth_bits: u8,
+    pub stencil_bits: u8,
+    pub samples: Option<u8>,
+    pub srgb: bool,
+    pub double_buffer: bool,
+    pub vsync: bool,
+}
+
+impl Default for GlConfig {
+    fn default() -> Self {
+        GlConfig {
+            version: (3, 2),
+            profile: Profile::Core,
+            red_bits: 8,
+            blue_bits: 8,
+            green_bits: 8,
+            alpha_bits: 8,
+            depth_bits: 24,
+            stencil_bits: 8,
+            samples: None,
+            srgb: true,
+            double_buffer: true,
+            vsync: false,
+        }
+    }
+}
+
+pub enum Profile {
+    Compatibility,
+    Core,
+}
+
 pub struct GlContext {
     context: platform::GlContext,
     phantom: PhantomData<*mut ()>,
 }
 
 impl GlContext {
-    pub fn create(parent: &impl HasRawWindowHandle) -> Result<GlContext, ()> {
-        platform::GlContext::create(parent).map(|context| GlContext {
+    pub fn create(parent: &impl HasRawWindowHandle, config: GlConfig) -> Result<GlContext, ()> {
+        platform::GlContext::create(parent, config).map(|context| GlContext {
             context,
             phantom: PhantomData,
         })
