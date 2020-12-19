@@ -12,7 +12,7 @@ use winapi::um::wingdi::{
 };
 use winapi::um::winuser::{GetDC, ReleaseDC};
 
-// See https://www.opengl.org/registry/specs/ARB/wgl_create_context.txt
+// See https://www.khronos.org/registry/OpenGL/extensions/ARB/WGL_ARB_create_context.txt
 type WglCreateContextAttribsARB = extern "system" fn(HDC, HGLRC, *const i32) -> HGLRC;
 
 const WGL_CONTEXT_MAJOR_VERSION_ARB: i32 = 0x2091;
