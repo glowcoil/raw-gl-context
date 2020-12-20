@@ -16,7 +16,7 @@ use winapi::um::winuser::{
     CW_USEDEFAULT, WNDCLASSW,
 };
 
-use crate::{GlConfig, GlError};
+use crate::{GlConfig, GlError, Profile};
 
 // See https://www.khronos.org/registry/OpenGL/extensions/ARB/WGL_ARB_create_context.txt
 type WglCreateContextAttribsARB = extern "system" fn(HDC, HGLRC, *const i32) -> HGLRC;
@@ -26,6 +26,7 @@ const WGL_CONTEXT_MINOR_VERSION_ARB: i32 = 0x2092;
 const WGL_CONTEXT_PROFILE_MASK_ARB: i32 = 0x9126;
 
 const WGL_CONTEXT_CORE_PROFILE_BIT_ARB: i32 = 0x00000001;
+const WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB: i32 = 0x00000002;
 
 // See https://www.khronos.org/registry/OpenGL/extensions/ARB/WGL_ARB_pixel_format.txt
 type WglChoosePixelFormatARB =
@@ -187,11 +188,15 @@ impl GlContext {
             );
             SetPixelFormat(hdc, pixel_format, &pfd);
 
+            let profile_mask = match config.profile {
+                Profile::Core => WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
+                Profile::Compatibility => WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB,
+            };
             #[rustfmt::skip]
             let ctx_attribs = [
-                WGL_CONTEXT_MAJOR_VERSION_ARB, 3,
-                WGL_CONTEXT_MINOR_VERSION_ARB, 2,
-                WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
+                WGL_CONTEXT_MAJOR_VERSION_ARB, config.version.0 as i32,
+                WGL_CONTEXT_MINOR_VERSION_ARB, config.version.1 as i32,
+                WGL_CONTEXT_PROFILE_MASK_ARB, profile_mask,
                 0
             ];
 
