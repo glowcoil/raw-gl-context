@@ -148,19 +148,36 @@ impl GlContext {
             wglMakeCurrent(hdc_tmp, hglrc_tmp);
 
             #[allow(non_snake_case)]
-            let wglCreateContextAttribsARB: WglCreateContextAttribsARB = std::mem::transmute(
-                wglGetProcAddress(CString::new("wglCreateContextAttribsARB").unwrap().as_ptr()),
-            );
+            let wglCreateContextAttribsARB: WglCreateContextAttribsARB = {
+                let addr =
+                    wglGetProcAddress(CString::new("wglCreateContextAttribsARB").unwrap().as_ptr());
+                if addr.is_null() {
+                    return Err(GlError::CreationFailed);
+                } else {
+                    std::mem::transmute(addr)
+                }
+            };
 
             #[allow(non_snake_case)]
-            let wglChoosePixelFormatARB: WglChoosePixelFormatARB = std::mem::transmute(
-                wglGetProcAddress(CString::new("wglChoosePixelFormatARB").unwrap().as_ptr()),
-            );
+            let wglChoosePixelFormatARB: WglChoosePixelFormatARB = {
+                let addr =
+                    wglGetProcAddress(CString::new("wglChoosePixelFormatARB").unwrap().as_ptr());
+                if addr.is_null() {
+                    return Err(GlError::CreationFailed);
+                } else {
+                    std::mem::transmute(addr)
+                }
+            };
 
             #[allow(non_snake_case)]
-            let wglSwapIntervalEXT: WglSwapIntervalEXT = std::mem::transmute(
-                wglGetProcAddress(CString::new("wglSwapIntervalEXT").unwrap().as_ptr()),
-            );
+            let wglSwapIntervalEXT: WglSwapIntervalEXT = {
+                let addr = wglGetProcAddress(CString::new("wglSwapIntervalEXT").unwrap().as_ptr());
+                if addr.is_null() {
+                    return Err(GlError::CreationFailed);
+                } else {
+                    std::mem::transmute(addr)
+                }
+            };
 
             wglMakeCurrent(hdc_tmp, std::ptr::null_mut());
             ReleaseDC(hwnd_tmp, hdc_tmp);
