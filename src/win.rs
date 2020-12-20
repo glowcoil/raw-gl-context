@@ -58,6 +58,10 @@ const WGL_SAMPLES_ARB: i32 = 0x2042;
 
 const WGL_FRAMEBUFFER_SRGB_CAPABLE_ARB: i32 = 0x20A9;
 
+// See https://www.khronos.org/registry/OpenGL/extensions/EXT/WGL_EXT_swap_control.txt
+
+type WglSwapIntervalEXT = extern "system" fn(i32) -> i32;
+
 pub struct GlContext {
     hwnd: HWND,
     hdc: HDC,
@@ -153,6 +157,11 @@ impl GlContext {
                 wglGetProcAddress(CString::new("wglChoosePixelFormatARB").unwrap().as_ptr()),
             );
 
+            #[allow(non_snake_case)]
+            let wglSwapIntervalEXT: WglSwapIntervalEXT = std::mem::transmute(
+                wglGetProcAddress(CString::new("wglSwapIntervalEXT").unwrap().as_ptr()),
+            );
+
             wglMakeCurrent(hdc_tmp, std::ptr::null_mut());
             ReleaseDC(hwnd_tmp, hdc_tmp);
             DestroyWindow(hwnd_tmp);
@@ -221,6 +230,10 @@ impl GlContext {
             }
 
             let gl_library = LoadLibraryA(CString::new("opengl32.dll").unwrap().as_ptr());
+
+            wglMakeCurrent(hdc, hglrc);
+            wglSwapIntervalEXT(config.vsync as i32);
+            wglMakeCurrent(hdc, std::ptr::null_mut());
 
             Ok(GlContext {
                 hwnd,
