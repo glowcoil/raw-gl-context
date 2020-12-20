@@ -52,6 +52,7 @@ impl Default for GlConfig {
     }
 }
 
+#[derive(PartialEq, Eq)]
 pub enum Profile {
     Compatibility,
     Core,
@@ -60,6 +61,7 @@ pub enum Profile {
 #[derive(Debug)]
 pub enum GlError {
     InvalidWindowHandle,
+    VersionNotSupported,
     CreationFailed,
 }
 

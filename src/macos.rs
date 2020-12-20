@@ -4,12 +4,13 @@ use std::str::FromStr;
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 
 use cocoa::appkit::{
-    NSOpenGLContext, NSOpenGLPFAAccelerated, NSOpenGLPFAAlphaSize, NSOpenGLPFAColorSize,
-    NSOpenGLPFADoubleBuffer, NSOpenGLPFAOpenGLProfile, NSOpenGLPixelFormat,
-    NSOpenGLProfileVersion3_2Core, NSOpenGLView, NSView,
+    NSOpenGLContext, NSOpenGLContextParameter, NSOpenGLPFAAccelerated, NSOpenGLPFAAlphaSize,
+    NSOpenGLPFAColorSize, NSOpenGLPFADepthSize, NSOpenGLPFADoubleBuffer, NSOpenGLPFAMultisample,
+    NSOpenGLPFAOpenGLProfile, NSOpenGLPFASampleBuffers, NSOpenGLPFASamples, NSOpenGLPFAStencilSize,
+    NSOpenGLPixelFormat, NSOpenGLProfileVersion3_2Core, NSOpenGLProfileVersion4_1Core,
+    NSOpenGLProfileVersionLegacy, NSOpenGLView, NSView,
 };
 use cocoa::base::{id, nil, YES};
-use cocoa::foundation::NSAutoreleasePool;
 
 use core_foundation::base::TCFType;
 use core_foundation::bundle::{CFBundleGetBundleWithIdentifier, CFBundleGetFunctionPointerForName};
@@ -17,7 +18,7 @@ use core_foundation::string::CFString;
 
 use objc::{msg_send, sel, sel_impl};
 
-use crate::{GlConfig, GlError};
+use crate::{GlConfig, GlError, Profile};
 
 pub struct GlContext {
     view: id,
@@ -42,17 +43,53 @@ impl GlContext {
         let parent_view = handle.ns_view as id;
 
         unsafe {
+            let version = if config.version < (3, 2) && config.profile == Profile::Compatibility {
+                NSOpenGLProfileVersionLegacy
+            } else if config.version == (3, 2) && config.profile == Profile::Core {
+                NSOpenGLProfileVersion3_2Core
+            } else if config.version > (3, 2) && config.profile == Profile::Core {
+                NSOpenGLProfileVersion4_1Core
+            } else {
+                return Err(GlError::VersionNotSupported);
+            };
+
             #[rustfmt::skip]
-            let pixel_format = NSOpenGLPixelFormat::alloc(nil).initWithAttributes_(&[
-                NSOpenGLPFAOpenGLProfile as u32, NSOpenGLProfileVersion3_2Core as u32,
-                NSOpenGLPFAColorSize as u32, 24u32,
-                NSOpenGLPFAAlphaSize as u32, 8u32,
-                NSOpenGLPFADoubleBuffer as u32, NSOpenGLPFAAccelerated as u32,
-                0u32,
-            ]);
+            let mut attrs = vec![
+                NSOpenGLPFAOpenGLProfile as u32, version as u32,
+                NSOpenGLPFAColorSize as u32, (config.red_bits + config.blue_bits + config.green_bits) as u32,
+                NSOpenGLPFAAlphaSize as u32, config.alpha_bits as u32,
+                NSOpenGLPFADepthSize as u32, config.depth_bits as u32,
+                NSOpenGLPFAStencilSize as u32, config.stencil_bits as u32,
+                NSOpenGLPFAAccelerated as u32,
+            ];
+
+            if config.samples.is_some() {
+                #[rustfmt::skip]
+                attrs.extend_from_slice(&[
+                    NSOpenGLPFAMultisample as u32,
+                    NSOpenGLPFASampleBuffers as u32, 1,
+                    NSOpenGLPFASamples as u32, config.samples.unwrap() as u32,
+                ]);
+            }
+
+            if config.double_buffer {
+                attrs.push(NSOpenGLPFADoubleBuffer as u32);
+            }
+
+            attrs.push(0);
+
+            let pixel_format = NSOpenGLPixelFormat::alloc(nil).initWithAttributes_(&attrs);
+
+            if pixel_format == nil {
+                return Err(GlError::CreationError);
+            }
 
             let view = NSOpenGLView::alloc(nil)
                 .initWithFrame_pixelFormat_(parent_view.frame(), pixel_format);
+
+            if view == nil {
+                return Err(GlError::CreationError);
+            }
 
             let () = msg_send![view, retain];
             NSOpenGLView::display_(view);
@@ -60,6 +97,11 @@ impl GlContext {
 
             let context: id = msg_send![view, openGLContext];
             let () = msg_send![context, retain];
+
+            context.setValues_forParameter_(
+                &(config.vsync as i32),
+                NSOpenGLContextParameter::NSOpenGLCPSwapInterval,
+            );
 
             let () = msg_send![pixel_format, release];
 
