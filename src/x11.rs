@@ -27,6 +27,10 @@ type GlXSwapIntervalEXT =
 
 const GLX_FRAMEBUFFER_SRGB_CAPABLE_ARB: i32 = 0x20B2;
 
+extern "C" fn err_handler(_dpy: *mut xlib::Display, _err: *mut xlib::XErrorEvent) -> i32 {
+    0
+}
+
 fn get_proc_address(symbol: &str) -> *const c_void {
     let symbol = CString::new(symbol).unwrap();
     unsafe { glx::glXGetProcAddress(symbol.as_ptr() as *const u8).unwrap() as *const c_void }
@@ -52,6 +56,8 @@ impl GlContext {
         if handle.display.is_null() {
             return Err(GlError::InvalidWindowHandle);
         }
+
+        let prev_callback = unsafe { xlib::XSetErrorHandler(Some(err_handler)) };
 
         let display = handle.display as *mut xlib::_XDisplay;
 
@@ -136,6 +142,8 @@ impl GlContext {
             glXSwapIntervalEXT(display, handle.window, config.vsync as i32);
             glx::glXMakeCurrent(display, 0, std::ptr::null_mut());
         }
+
+        unsafe { xlib::XSetErrorHandler(prev_callback); }
 
         Ok(GlContext {
             window: handle.window,
