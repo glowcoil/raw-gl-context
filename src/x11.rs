@@ -6,15 +6,26 @@ use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 use x11::glx;
 use x11::xlib;
 
-use crate::{GlConfig, GlError};
+use crate::{GlConfig, GlError, Profile};
 
-type GlXCreateContextAttribsARBProc = unsafe extern "C" fn(
+// See https://www.khronos.org/registry/OpenGL/extensions/ARB/GLX_ARB_create_context.txt
+
+type GlXCreateContextAttribsARB = unsafe extern "C" fn(
     dpy: *mut xlib::Display,
     fbc: glx::GLXFBConfig,
     share_context: glx::GLXContext,
     direct: xlib::Bool,
     attribs: *const c_int,
 ) -> glx::GLXContext;
+
+// See https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_swap_control.txt
+
+type GlXSwapIntervalEXT =
+    unsafe extern "C" fn(dpy: *mut xlib::Display, drawable: glx::GLXDrawable, interval: i32);
+
+// See https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_framebuffer_sRGB.txt
+
+const GLX_FRAMEBUFFER_SRGB_CAPABLE_ARB: i32 = 0x20B2;
 
 fn get_proc_address(symbol: &str) -> *const c_void {
     let symbol = CString::new(symbol).unwrap();
@@ -48,17 +59,20 @@ impl GlContext {
 
         #[rustfmt::skip]
         let fb_attribs = [
-            glx::GLX_X_RENDERABLE,  1,
+            glx::GLX_X_RENDERABLE, 1,
             glx::GLX_X_VISUAL_TYPE, glx::GLX_TRUE_COLOR,
             glx::GLX_DRAWABLE_TYPE, glx::GLX_WINDOW_BIT,
-            glx::GLX_RENDER_TYPE,   glx::GLX_RGBA_BIT,
-            glx::GLX_RED_SIZE,      8,
-            glx::GLX_GREEN_SIZE,    8,
-            glx::GLX_BLUE_SIZE,     8,
-            glx::GLX_ALPHA_SIZE,    8,
-            glx::GLX_DEPTH_SIZE,    24,
-            glx::GLX_STENCIL_SIZE,  8,
-            glx::GLX_DOUBLEBUFFER,  1,
+            glx::GLX_RENDER_TYPE, glx::GLX_RGBA_BIT,
+            glx::GLX_RED_SIZE, config.red_bits as i32,
+            glx::GLX_GREEN_SIZE, config.green_bits as i32,
+            glx::GLX_BLUE_SIZE, config.blue_bits as i32,
+            glx::GLX_ALPHA_SIZE, config.alpha_bits as i32,
+            glx::GLX_DEPTH_SIZE, config.depth_bits as i32,
+            glx::GLX_STENCIL_SIZE, config.stencil_bits as i32,
+            glx::GLX_DOUBLEBUFFER, config.double_buffer as i32,
+            glx::GLX_SAMPLE_BUFFERS, config.samples.is_some() as i32,
+            glx::GLX_SAMPLES, config.samples.unwrap_or(0) as i32,
+            GLX_FRAMEBUFFER_SRGB_CAPABLE_ARB, config.srgb as i32,
             0,
         ];
 
@@ -70,17 +84,38 @@ impl GlContext {
             return Err(GlError::CreationFailed);
         }
 
-        #[rustfmt::skip]
-        let ctx_attribs = [
-            glx::arb::GLX_CONTEXT_MAJOR_VERSION_ARB, 3,
-            glx::arb::GLX_CONTEXT_MINOR_VERSION_ARB, 2,
-            glx::arb::GLX_CONTEXT_PROFILE_MASK_ARB, glx::arb::GLX_CONTEXT_CORE_PROFILE_BIT_ARB,
-            0,
-        ];
+        #[allow(non_snake_case)]
+        let glXCreateContextAttribsARB: GlXCreateContextAttribsARB = unsafe {
+            let addr = get_proc_address("glXCreateContextAttribsARB");
+            if addr.is_null() {
+                return Err(GlError::CreationFailed);
+            } else {
+                std::mem::transmute(addr)
+            }
+        };
 
         #[allow(non_snake_case)]
-        let glXCreateContextAttribsARB: GlXCreateContextAttribsARBProc =
-            unsafe { std::mem::transmute(get_proc_address("glXCreateContextAttribsARB")) };
+        let glXSwapIntervalEXT: GlXSwapIntervalEXT = unsafe {
+            let addr = get_proc_address("glXSwapIntervalEXT");
+            if addr.is_null() {
+                return Err(GlError::CreationFailed);
+            } else {
+                std::mem::transmute(addr)
+            }
+        };
+
+        let profile_mask = match config.profile {
+            Profile::Core => glx::arb::GLX_CONTEXT_CORE_PROFILE_BIT_ARB,
+            Profile::Compatibility => glx::arb::GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB,
+        };
+
+        #[rustfmt::skip]
+        let ctx_attribs = [
+            glx::arb::GLX_CONTEXT_MAJOR_VERSION_ARB, config.version.0 as i32,
+            glx::arb::GLX_CONTEXT_MINOR_VERSION_ARB, config.version.1 as i32,
+            glx::arb::GLX_CONTEXT_PROFILE_MASK_ARB, profile_mask,
+            0,
+        ];
 
         let context = unsafe {
             glXCreateContextAttribsARB(
@@ -94,6 +129,12 @@ impl GlContext {
 
         if context.is_null() {
             return Err(GlError::CreationFailed);
+        }
+
+        unsafe {
+            glx::glXMakeCurrent(display, handle.window, context);
+            glXSwapIntervalEXT(display, handle.window, config.vsync as i32);
+            glx::glXMakeCurrent(display, 0, std::ptr::null_mut());
         }
 
         Ok(GlContext {
