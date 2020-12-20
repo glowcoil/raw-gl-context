@@ -47,6 +47,11 @@ const WGL_STENCIL_BITS_ARB: i32 = 0x2023;
 const WGL_FULL_ACCELERATION_ARB: i32 = 0x2027;
 const WGL_TYPE_RGBA_ARB: i32 = 0x202B;
 
+// See https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_multisample.txt
+
+const WGL_SAMPLE_BUFFERS_ARB: i32 = 0x2041;
+const WGL_SAMPLES_ARB: i32 = 0x2042;
+
 pub struct GlContext {
     hwnd: HWND,
     hdc: HDC,
@@ -165,6 +170,8 @@ impl GlContext {
                 WGL_ALPHA_BITS_ARB, config.alpha_bits as i32,
                 WGL_DEPTH_BITS_ARB, config.depth_bits as i32,
                 WGL_STENCIL_BITS_ARB, config.stencil_bits as i32,
+                WGL_SAMPLE_BUFFERS_ARB, config.samples.is_some() as i32,
+                WGL_SAMPLES_ARB, config.samples.unwrap_or(0) as i32,
                 0,
             ];
 
@@ -192,6 +199,7 @@ impl GlContext {
                 Profile::Core => WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
                 Profile::Compatibility => WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB,
             };
+
             #[rustfmt::skip]
             let ctx_attribs = [
                 WGL_CONTEXT_MAJOR_VERSION_ARB, config.version.0 as i32,
