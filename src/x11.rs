@@ -143,7 +143,9 @@ impl GlContext {
             glx::glXMakeCurrent(display, 0, std::ptr::null_mut());
         }
 
-        unsafe { xlib::XSetErrorHandler(prev_callback); }
+        unsafe {
+            xlib::XSetErrorHandler(prev_callback);
+        }
 
         Ok(GlContext {
             window: handle.window,
