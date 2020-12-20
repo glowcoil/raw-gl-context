@@ -155,16 +155,16 @@ impl GlContext {
             #[rustfmt::skip]
             let pixel_format_attribs = [
                 WGL_DRAW_TO_WINDOW_ARB, 1,
-                WGL_SUPPORT_OPENGL_ARB, 1,
-                WGL_DOUBLE_BUFFER_ARB, 1,
                 WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB,
+                WGL_SUPPORT_OPENGL_ARB, 1,
+                WGL_DOUBLE_BUFFER_ARB, config.double_buffer as i32,
                 WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB,
-                WGL_RED_BITS_ARB, 8,
-                WGL_GREEN_BITS_ARB, 8,
-                WGL_BLUE_BITS_ARB, 8,
-                WGL_ALPHA_BITS_ARB, 8,
-                WGL_DEPTH_BITS_ARB, 24,
-                WGL_STENCIL_BITS_ARB, 8,
+                WGL_RED_BITS_ARB, config.red_bits as i32,
+                WGL_GREEN_BITS_ARB, config.green_bits as i32,
+                WGL_BLUE_BITS_ARB, config.blue_bits as i32,
+                WGL_ALPHA_BITS_ARB, config.alpha_bits as i32,
+                WGL_DEPTH_BITS_ARB, config.depth_bits as i32,
+                WGL_STENCIL_BITS_ARB, config.stencil_bits as i32,
                 0,
             ];
 
