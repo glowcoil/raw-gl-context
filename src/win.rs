@@ -5,7 +5,7 @@ use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 
 use winapi::shared::minwindef::HMODULE;
 use winapi::shared::windef::{HDC, HGLRC, HWND};
-use winapi::um::libloaderapi::{GetProcAddress, LoadLibraryA};
+use winapi::um::libloaderapi::{FreeLibrary, GetProcAddress, LoadLibraryA};
 use winapi::um::wingdi::{
     wglCreateContext, wglDeleteContext, wglGetProcAddress, wglMakeCurrent, ChoosePixelFormat,
     DescribePixelFormat, SetPixelFormat, SwapBuffers, PFD_DOUBLEBUFFER, PFD_DRAW_TO_WINDOW,
@@ -296,6 +296,7 @@ impl Drop for GlContext {
             wglMakeCurrent(std::ptr::null_mut(), std::ptr::null_mut());
             wglDeleteContext(self.hglrc);
             ReleaseDC(self.hwnd, self.hdc);
+            FreeLibrary(self.gl_library);
         }
     }
 }
