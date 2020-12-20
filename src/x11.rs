@@ -67,7 +67,7 @@ impl GlContext {
             unsafe { glx::glXChooseFBConfig(display, screen, fb_attribs.as_ptr(), &mut n_configs) };
 
         if n_configs <= 0 {
-            return Err(());
+            return Err(GlError::CreationFailed);
         }
 
         #[rustfmt::skip]
@@ -78,6 +78,7 @@ impl GlContext {
             0,
         ];
 
+        #[allow(non_snake_case)]
         let glXCreateContextAttribsARB: GlXCreateContextAttribsARBProc =
             unsafe { std::mem::transmute(get_proc_address("glXCreateContextAttribsARB")) };
 
@@ -92,7 +93,7 @@ impl GlContext {
         };
 
         if context.is_null() {
-            return Err(());
+            return Err(GlError::CreationFailed);
         }
 
         Ok(GlContext {
