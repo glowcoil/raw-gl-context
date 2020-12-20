@@ -1,11 +1,12 @@
 [package]
 name = "raw-gl-context"
 version = "0.1.0"
-authors = [
-    "Micah Johnston <micah@glowcoil.com>",
-    "Mirko Covizzi <mrkcvzz@gmail.com>",
-]
+authors = ["Micah Johnston <micah@glowcoil.com>"]
 edition = "2018"
+description = "Library for creating an OpenGL context from a RawWindowHandle"
+repository = "https://github.com/glowcoil/raw-gl-context"
+readme = "README.md"
+license = "MIT/Apache-2.0"
 
 [dependencies]
 raw-window-handle = "0.3.3"
