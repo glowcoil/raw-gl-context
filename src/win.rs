@@ -19,6 +19,7 @@ use winapi::um::winuser::{
 use crate::{GlConfig, GlError, Profile};
 
 // See https://www.khronos.org/registry/OpenGL/extensions/ARB/WGL_ARB_create_context.txt
+
 type WglCreateContextAttribsARB = extern "system" fn(HDC, HGLRC, *const i32) -> HGLRC;
 
 const WGL_CONTEXT_MAJOR_VERSION_ARB: i32 = 0x2091;
@@ -29,6 +30,7 @@ const WGL_CONTEXT_CORE_PROFILE_BIT_ARB: i32 = 0x00000001;
 const WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB: i32 = 0x00000002;
 
 // See https://www.khronos.org/registry/OpenGL/extensions/ARB/WGL_ARB_pixel_format.txt
+
 type WglChoosePixelFormatARB =
     extern "system" fn(HDC, *const i32, *const f32, u32, *mut i32, *mut u32) -> i32;
 
@@ -51,6 +53,10 @@ const WGL_TYPE_RGBA_ARB: i32 = 0x202B;
 
 const WGL_SAMPLE_BUFFERS_ARB: i32 = 0x2041;
 const WGL_SAMPLES_ARB: i32 = 0x2042;
+
+// See https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_framebuffer_sRGB.txt
+
+const WGL_FRAMEBUFFER_SRGB_CAPABLE_ARB: i32 = 0x20A9;
 
 pub struct GlContext {
     hwnd: HWND,
@@ -172,6 +178,7 @@ impl GlContext {
                 WGL_STENCIL_BITS_ARB, config.stencil_bits as i32,
                 WGL_SAMPLE_BUFFERS_ARB, config.samples.is_some() as i32,
                 WGL_SAMPLES_ARB, config.samples.unwrap_or(0) as i32,
+                WGL_FRAMEBUFFER_SRGB_CAPABLE_ARB, config.srgb as i32,
                 0,
             ];
 
