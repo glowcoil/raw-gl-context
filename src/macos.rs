@@ -81,14 +81,14 @@ impl GlContext {
             let pixel_format = NSOpenGLPixelFormat::alloc(nil).initWithAttributes_(&attrs);
 
             if pixel_format == nil {
-                return Err(GlError::CreationError);
+                return Err(GlError::CreationFailed);
             }
 
             let view = NSOpenGLView::alloc(nil)
                 .initWithFrame_pixelFormat_(parent_view.frame(), pixel_format);
 
             if view == nil {
-                return Err(GlError::CreationError);
+                return Err(GlError::CreationFailed);
             }
 
             let () = msg_send![view, retain];
