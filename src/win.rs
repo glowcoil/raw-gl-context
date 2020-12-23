@@ -100,11 +100,11 @@ impl GlContext {
             };
 
             // Ignore errors, since class might be registered multiple times
-            let window_class = RegisterClassW(&wnd_class);
+            RegisterClassW(&wnd_class);
 
             let hwnd_tmp = CreateWindowExW(
                 0,
-                window_class as *const u16,
+                class_name.as_ptr(),
                 class_name.as_ptr(),
                 0,
                 CW_USEDEFAULT,
