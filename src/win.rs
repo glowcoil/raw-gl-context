@@ -149,8 +149,8 @@ impl GlContext {
 
             #[allow(non_snake_case)]
             let wglCreateContextAttribsARB: WglCreateContextAttribsARB = {
-                let addr =
-                    wglGetProcAddress(CString::new("wglCreateContextAttribsARB").unwrap().as_ptr());
+                let symbol = CString::new("wglCreateContextAttribsARB").unwrap();
+                let addr = wglGetProcAddress(symbol.as_ptr());
                 if addr.is_null() {
                     return Err(GlError::CreationFailed);
                 } else {
@@ -160,8 +160,8 @@ impl GlContext {
 
             #[allow(non_snake_case)]
             let wglChoosePixelFormatARB: WglChoosePixelFormatARB = {
-                let addr =
-                    wglGetProcAddress(CString::new("wglChoosePixelFormatARB").unwrap().as_ptr());
+                let symbol = CString::new("wglChoosePixelFormatARB").unwrap();
+                let addr = wglGetProcAddress(symbol.as_ptr());
                 if addr.is_null() {
                     return Err(GlError::CreationFailed);
                 } else {
@@ -171,7 +171,8 @@ impl GlContext {
 
             #[allow(non_snake_case)]
             let wglSwapIntervalEXT: WglSwapIntervalEXT = {
-                let addr = wglGetProcAddress(CString::new("wglSwapIntervalEXT").unwrap().as_ptr());
+                let symbol = CString::new("wglSwapIntervalEXT").unwrap();
+                let addr = wglGetProcAddress(symbol.as_ptr());
                 if addr.is_null() {
                     return Err(GlError::CreationFailed);
                 } else {
@@ -246,7 +247,8 @@ impl GlContext {
                 return Err(GlError::CreationFailed);
             }
 
-            let gl_library = LoadLibraryA(CString::new("opengl32.dll").unwrap().as_ptr());
+            let gl_library_name = CString::new("opengl32.dll").unwrap();
+            let gl_library = LoadLibraryA(gl_library_name.as_ptr());
 
             wglMakeCurrent(hdc, hglrc);
             wglSwapIntervalEXT(config.vsync as i32);
