@@ -83,11 +83,22 @@ impl GlContext {
         ];
 
         let mut n_configs = 0;
-        let fb_config =
+        let fb_configs =
             unsafe { glx::glXChooseFBConfig(display, screen, fb_attribs.as_ptr(), &mut n_configs) };
 
         if n_configs <= 0 {
             return Err(GlError::CreationFailed);
+        }
+
+        let fb_config = unsafe { *fb_configs };
+
+        unsafe {
+            xlib::XFree(fb_configs as *mut c_void);
+        }
+
+        unsafe {
+            let visual = glx::glXGetVisualFromFBConfig(display, fb_config);
+            xlib::XFree(visual as *mut c_void);
         }
 
         #[allow(non_snake_case)]
@@ -126,7 +137,7 @@ impl GlContext {
         let context = unsafe {
             glXCreateContextAttribsARB(
                 display,
-                *fb_config,
+                fb_config,
                 std::ptr::null_mut(),
                 1,
                 ctx_attribs.as_ptr(),
