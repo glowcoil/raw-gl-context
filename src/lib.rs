@@ -72,7 +72,7 @@ pub struct GlContext {
 
 impl GlContext {
     pub fn create(
-        parent: &impl HasRawWindowHandle,
+        parent: &dyn HasRawWindowHandle,
         config: GlConfig,
     ) -> Result<GlContext, GlError> {
         platform::GlContext::create(parent, config).map(|context| GlContext {

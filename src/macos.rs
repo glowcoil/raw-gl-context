@@ -28,7 +28,7 @@ pub struct GlContext {
 
 impl GlContext {
     pub fn create(
-        parent: &impl HasRawWindowHandle,
+        parent: &dyn HasRawWindowHandle,
         config: GlConfig,
     ) -> Result<GlContext, GlError> {
         let handle = if let RawWindowHandle::MacOS(handle) = parent.raw_window_handle() {
