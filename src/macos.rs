@@ -20,6 +20,7 @@ use objc::{msg_send, sel, sel_impl};
 
 use crate::{GlConfig, GlError, Profile};
 use cocoa::foundation::NSAutoreleasePool;
+use objc::runtime::Object;
 
 pub struct GlContext {
     context: id,
@@ -36,11 +37,19 @@ impl GlContext {
             return Err(GlError::InvalidWindowHandle);
         };
 
-        if handle.ns_view.is_null() {
-            return Err(GlError::InvalidWindowHandle);
-        }
+        let ns_view = if !handle.ns_view.is_null() {
+            Ok(handle.ns_view as id)
+        } else if !handle.ns_window.is_null() {
+            let ns_window = handle.ns_window as *mut Object;
+            let ns_view: *mut c_void = unsafe { msg_send![ns_window, contentView] };
 
-        let parent_view = handle.ns_view as id;
+            assert!(!ns_view.is_null());
+            Ok(ns_view as id)
+        } else {
+            return Err(GlError::InvalidWindowHandle);
+        }?;
+
+        let parent_view = ns_view as id;
 
         unsafe {
             let version = if config.version < (3, 2) && config.profile == Profile::Compatibility {
