@@ -11,7 +11,7 @@ pub fn main() {
 
     // Create the window
     let window = video_subsystem
-        .window("Rafx Demo", 900, 600)
+        .window("SDL2 GL Example", 900, 600)
         .position_centered()
         .allow_highdpi()
         .resizable()
