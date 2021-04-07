@@ -6,8 +6,10 @@ use winit::window::WindowBuilder;
 fn main() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
+    let window2 = WindowBuilder::new().build(&event_loop).unwrap();
 
     let context = GlContext::create(&window, GlConfig::default(), None).unwrap();
+    let context2 = GlContext::create(&window2, GlConfig::default(), Some(&context)).unwrap();
 
     context.make_current();
 
@@ -38,6 +40,21 @@ fn main() {
 
                 context.swap_buffers();
                 context.make_not_current();
+
+                context2.make_current();
+
+                unsafe {
+                    gl::ClearColor(
+                        1.0 - (now.elapsed().as_secs_f32().sin() * 0.5 + 0.5),
+                        0.0,
+                        1.0,
+                        1.0,
+                    );
+                    gl::Clear(gl::COLOR_BUFFER_BIT);
+                }
+
+                context2.swap_buffers();
+                context2.make_not_current();
             }
             _ => {}
         }
