@@ -30,6 +30,7 @@ impl GlContext {
     pub fn create(
         parent: &dyn HasRawWindowHandle,
         config: GlConfig,
+        shared_context: Option<&GlContext>,
     ) -> Result<GlContext, GlError> {
         let handle = if let RawWindowHandle::MacOS(handle) = parent.raw_window_handle() {
             handle
@@ -93,8 +94,10 @@ impl GlContext {
                 return Err(GlError::CreationFailed);
             }
 
-            let gl_context =
-                NSOpenGLContext::alloc(nil).initWithFormat_shareContext_(pixel_format, nil);
+            let shared_context = shared_context.map(|x| x.context).unwrap_or(nil);
+
+            let gl_context = NSOpenGLContext::alloc(nil)
+                .initWithFormat_shareContext_(pixel_format, shared_context);
 
             if gl_context == nil {
                 return Err(GlError::CreationFailed);

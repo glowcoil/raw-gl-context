@@ -22,7 +22,7 @@ pub fn main() {
         .event_pump()
         .expect("Could not create sdl event pump");
 
-    let gl_context = GlContext::create(&window, GlConfig::default()).unwrap();
+    let gl_context = GlContext::create(&window, GlConfig::default(), None).unwrap();
 
     gl_context.make_current();
 

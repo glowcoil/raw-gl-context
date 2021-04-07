@@ -46,6 +46,7 @@ impl GlContext {
     pub fn create(
         parent: &dyn HasRawWindowHandle,
         config: GlConfig,
+        shared_context: Option<&GlContext>,
     ) -> Result<GlContext, GlError> {
         let handle = if let RawWindowHandle::Xlib(handle) = parent.raw_window_handle() {
             handle
@@ -123,14 +124,11 @@ impl GlContext {
             0,
         ];
 
+        let shared_context = shared_context
+            .map(|x| x.context)
+            .unwrap_or(std::ptr::null_mut());
         let context = unsafe {
-            glXCreateContextAttribsARB(
-                display,
-                *fb_config,
-                std::ptr::null_mut(),
-                1,
-                ctx_attribs.as_ptr(),
-            )
+            glXCreateContextAttribsARB(display, *fb_config, shared_context, 1, ctx_attribs.as_ptr())
         };
 
         if context.is_null() {
