@@ -20,6 +20,7 @@ use objc::{msg_send, sel, sel_impl};
 
 use crate::{GlConfig, GlError, Profile};
 use cocoa::foundation::NSAutoreleasePool;
+use objc::runtime::Object;
 
 pub struct GlContext {
     context: id,
@@ -133,6 +134,7 @@ impl GlContext {
         unsafe {
             let pool = NSAutoreleasePool::new(nil);
             self.context.flushBuffer();
+            self.context.update();
             let _: () = msg_send![pool, release];
         }
     }
