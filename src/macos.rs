@@ -8,9 +8,9 @@ use cocoa::appkit::{
     NSOpenGLPFAColorSize, NSOpenGLPFADepthSize, NSOpenGLPFADoubleBuffer, NSOpenGLPFAMultisample,
     NSOpenGLPFAOpenGLProfile, NSOpenGLPFASampleBuffers, NSOpenGLPFASamples, NSOpenGLPFAStencilSize,
     NSOpenGLPixelFormat, NSOpenGLProfileVersion3_2Core, NSOpenGLProfileVersion4_1Core,
-    NSOpenGLProfileVersionLegacy, NSOpenGLView, NSView,
+    NSOpenGLProfileVersionLegacy,
 };
-use cocoa::base::{id, nil, YES};
+use cocoa::base::{id, nil};
 
 use core_foundation::base::TCFType;
 use core_foundation::bundle::{CFBundleGetBundleWithIdentifier, CFBundleGetFunctionPointerForName};
@@ -19,16 +19,18 @@ use core_foundation::string::CFString;
 use objc::{msg_send, sel, sel_impl};
 
 use crate::{GlConfig, GlError, Profile};
+use cocoa::foundation::NSAutoreleasePool;
+use objc::runtime::Object;
 
 pub struct GlContext {
-    view: id,
     context: id,
 }
 
 impl GlContext {
     pub fn create(
-        parent: &impl HasRawWindowHandle,
+        parent: &dyn HasRawWindowHandle,
         config: GlConfig,
+        shared_context: Option<&GlContext>,
     ) -> Result<GlContext, GlError> {
         let handle = if let RawWindowHandle::MacOS(handle) = parent.raw_window_handle() {
             handle
@@ -36,11 +38,19 @@ impl GlContext {
             return Err(GlError::InvalidWindowHandle);
         };
 
-        if handle.ns_view.is_null() {
-            return Err(GlError::InvalidWindowHandle);
-        }
+        let ns_view = if !handle.ns_view.is_null() {
+            Ok(handle.ns_view as id)
+        } else if !handle.ns_window.is_null() {
+            let ns_window = handle.ns_window as *mut Object;
+            let ns_view: *mut c_void = unsafe { msg_send![ns_window, contentView] };
 
-        let parent_view = handle.ns_view as id;
+            assert!(!ns_view.is_null());
+            Ok(ns_view as id)
+        } else {
+            return Err(GlError::InvalidWindowHandle);
+        }?;
+
+        let parent_view = ns_view as id;
 
         unsafe {
             let version = if config.version < (3, 2) && config.profile == Profile::Compatibility {
@@ -84,28 +94,27 @@ impl GlContext {
                 return Err(GlError::CreationFailed);
             }
 
-            let view = NSOpenGLView::alloc(nil)
-                .initWithFrame_pixelFormat_(parent_view.frame(), pixel_format);
+            let shared_context = shared_context.map(|x| x.context).unwrap_or(nil);
 
-            if view == nil {
+            let gl_context = NSOpenGLContext::alloc(nil)
+                .initWithFormat_shareContext_(pixel_format, shared_context);
+
+            if gl_context == nil {
                 return Err(GlError::CreationFailed);
             }
 
-            let () = msg_send![view, retain];
-            NSOpenGLView::display_(view);
-            parent_view.addSubview_(view);
+            gl_context.setView_(parent_view);
 
-            let context: id = msg_send![view, openGLContext];
-            let () = msg_send![context, retain];
-
-            context.setValues_forParameter_(
+            gl_context.setValues_forParameter_(
                 &(config.vsync as i32),
                 NSOpenGLContextParameter::NSOpenGLCPSwapInterval,
             );
 
             let () = msg_send![pixel_format, release];
 
-            Ok(GlContext { view, context })
+            Ok(GlContext {
+                context: gl_context,
+            })
         }
     }
 
@@ -134,8 +143,10 @@ impl GlContext {
 
     pub fn swap_buffers(&self) {
         unsafe {
+            let pool = NSAutoreleasePool::new(nil);
             self.context.flushBuffer();
-            let () = msg_send![self.view, setNeedsDisplay: YES];
+            self.context.update();
+            let _: () = msg_send![pool, release];
         }
     }
 }
@@ -144,7 +155,6 @@ impl Drop for GlContext {
     fn drop(&mut self) {
         unsafe {
             let () = msg_send![self.context, release];
-            let () = msg_send![self.view, release];
         }
     }
 }
