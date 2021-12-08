@@ -18,6 +18,7 @@ mod macos;
 #[cfg(target_os = "macos")]
 use macos as platform;
 
+#[derive(Clone, Debug)]
 pub struct GlConfig {
     pub version: (u8, u8),
     pub profile: Profile,
@@ -52,7 +53,7 @@ impl Default for GlConfig {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Profile {
     Compatibility,
     Core,
