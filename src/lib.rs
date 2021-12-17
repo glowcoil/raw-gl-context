@@ -73,12 +73,15 @@ pub struct GlContext {
 
 impl GlContext {
     pub fn create(
-        parent: &impl HasRawWindowHandle,
+        parent: &dyn HasRawWindowHandle,
         config: GlConfig,
+        share: Option<&GlContext>,
     ) -> Result<GlContext, GlError> {
-        platform::GlContext::create(parent, config).map(|context| GlContext {
-            context,
-            phantom: PhantomData,
+        platform::GlContext::create(parent, config, share.map(|x| &x.context)).map(|context| {
+            GlContext {
+                context,
+                phantom: PhantomData,
+            }
         })
     }
 
