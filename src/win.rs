@@ -71,8 +71,9 @@ pub struct GlContext {
 
 impl GlContext {
     pub fn create(
-        parent: &impl HasRawWindowHandle,
+        parent: &dyn HasRawWindowHandle,
         config: GlConfig,
+        shared_context: Option<&GlContext>,
     ) -> Result<GlContext, GlError> {
         let handle = if let RawWindowHandle::Windows(handle) = parent.raw_window_handle() {
             handle
@@ -242,7 +243,10 @@ impl GlContext {
                 0
             ];
 
-            let hglrc = wglCreateContextAttribsARB(hdc, std::ptr::null_mut(), ctx_attribs.as_ptr());
+            let shared_context = shared_context
+                .map(|x| x.hglrc)
+                .unwrap_or(std::ptr::null_mut());
+            let hglrc = wglCreateContextAttribsARB(hdc, shared_context, ctx_attribs.as_ptr());
             if hglrc == std::ptr::null_mut() {
                 return Err(GlError::CreationFailed);
             }
