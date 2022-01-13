@@ -87,11 +87,11 @@ impl GlContext {
             let view = NSOpenGLView::alloc(nil)
                 .initWithFrame_pixelFormat_(parent_view.frame(), pixel_format);
 
-            view.setWantsBestResolutionOpenGLSurface_(YES);
-
             if view == nil {
                 return Err(GlError::CreationFailed);
             }
+
+            view.setWantsBestResolutionOpenGLSurface_(YES);
 
             let () = msg_send![view, retain];
             NSOpenGLView::display_(view);
