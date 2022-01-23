@@ -3,7 +3,7 @@ use std::os::windows::ffi::OsStrExt;
 
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 
-use winapi::shared::minwindef::HMODULE;
+use winapi::shared::minwindef::{HMODULE, HINSTANCE};
 use winapi::shared::windef::{HDC, HGLRC, HWND};
 use winapi::um::libloaderapi::{FreeLibrary, GetProcAddress, LoadLibraryA};
 use winapi::um::wingdi::{
@@ -11,6 +11,7 @@ use winapi::um::wingdi::{
     DescribePixelFormat, SetPixelFormat, SwapBuffers, PFD_DOUBLEBUFFER, PFD_DRAW_TO_WINDOW,
     PFD_MAIN_PLANE, PFD_SUPPORT_OPENGL, PFD_TYPE_RGBA, PIXELFORMATDESCRIPTOR,
 };
+use winapi::um::winnt::IMAGE_DOS_HEADER;
 use winapi::um::winuser::{
     CreateWindowExW, DefWindowProcW, DestroyWindow, GetDC, RegisterClassW, ReleaseDC, CS_OWNDC,
     CW_USEDEFAULT, WNDCLASSW,
@@ -69,6 +70,10 @@ pub struct GlContext {
     gl_library: HMODULE,
 }
 
+extern "C" {
+    static __ImageBase: IMAGE_DOS_HEADER;
+}
+
 impl GlContext {
     pub fn create(
         parent: &impl HasRawWindowHandle,
@@ -91,10 +96,12 @@ impl GlContext {
                 OsStr::new("raw-gl-context-window").encode_wide().collect();
             class_name.push(0);
 
+            let hinstance = &__ImageBase as *const IMAGE_DOS_HEADER as HINSTANCE;
+
             let wnd_class = WNDCLASSW {
                 style: CS_OWNDC,
                 lpfnWndProc: Some(DefWindowProcW),
-                hInstance: std::ptr::null_mut(),
+                hInstance: hinstance,
                 lpszClassName: class_name.as_ptr(),
                 ..std::mem::zeroed()
             };
@@ -113,7 +120,7 @@ impl GlContext {
                 CW_USEDEFAULT,
                 std::ptr::null_mut(),
                 std::ptr::null_mut(),
-                std::ptr::null_mut(),
+                hinstance,
                 std::ptr::null_mut(),
             );
 
