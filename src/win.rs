@@ -3,7 +3,8 @@ use std::os::windows::ffi::OsStrExt;
 
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 
-use winapi::shared::minwindef::{HMODULE, HINSTANCE};
+use winapi::shared::minwindef::{HINSTANCE, HMODULE};
+use winapi::shared::ntdef::WCHAR;
 use winapi::shared::windef::{HDC, HGLRC, HWND};
 use winapi::um::libloaderapi::{FreeLibrary, GetProcAddress, LoadLibraryA};
 use winapi::um::wingdi::{
@@ -13,8 +14,8 @@ use winapi::um::wingdi::{
 };
 use winapi::um::winnt::IMAGE_DOS_HEADER;
 use winapi::um::winuser::{
-    CreateWindowExW, DefWindowProcW, DestroyWindow, GetDC, RegisterClassW, ReleaseDC, CS_OWNDC,
-    CW_USEDEFAULT, WNDCLASSW,
+    CreateWindowExW, DefWindowProcW, DestroyWindow, GetDC, RegisterClassW, ReleaseDC,
+    UnregisterClassW, CS_OWNDC, CW_USEDEFAULT, WNDCLASSW,
 };
 
 use crate::{GlConfig, GlError, Profile};
@@ -92,8 +93,9 @@ impl GlContext {
         unsafe {
             // Create temporary window and context to load function pointers
 
-            let mut class_name: Vec<u16> =
-                OsStr::new("raw-gl-context-window").encode_wide().collect();
+            let class_name_str =
+                format!("raw-gl-context-window-{}", uuid::Uuid::new_v4().to_simple());
+            let mut class_name: Vec<WCHAR> = OsStr::new(&class_name_str).encode_wide().collect();
             class_name.push(0);
 
             let hinstance = &__ImageBase as *const IMAGE_DOS_HEADER as HINSTANCE;
@@ -106,13 +108,15 @@ impl GlContext {
                 ..std::mem::zeroed()
             };
 
-            // Ignore errors, since class might be registered multiple times
-            RegisterClassW(&wnd_class);
+            let class = RegisterClassW(&wnd_class);
+            if class == 0 {
+                return Err(GlError::CreationFailed);
+            }
 
             let hwnd_tmp = CreateWindowExW(
                 0,
-                class_name.as_ptr(),
-                class_name.as_ptr(),
+                class as *const WCHAR,
+                [0].as_ptr(),
                 0,
                 CW_USEDEFAULT,
                 CW_USEDEFAULT,
@@ -148,6 +152,7 @@ impl GlContext {
             let hglrc_tmp = wglCreateContext(hdc_tmp);
             if hglrc_tmp.is_null() {
                 ReleaseDC(hwnd_tmp, hdc_tmp);
+                UnregisterClassW(class as *const WCHAR, hinstance);
                 DestroyWindow(hwnd_tmp);
                 return Err(GlError::CreationFailed);
             }
@@ -189,6 +194,7 @@ impl GlContext {
 
             wglMakeCurrent(hdc_tmp, std::ptr::null_mut());
             ReleaseDC(hwnd_tmp, hdc_tmp);
+            UnregisterClassW(class as *const WCHAR, hinstance);
             DestroyWindow(hwnd_tmp);
 
             // Create actual context
