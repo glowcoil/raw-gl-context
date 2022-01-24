@@ -43,7 +43,7 @@ pub struct GlContext {
 }
 
 impl GlContext {
-    pub fn create(
+    pub unsafe fn create(
         parent: &impl HasRawWindowHandle,
         config: GlConfig,
     ) -> Result<GlContext, GlError> {
@@ -57,11 +57,11 @@ impl GlContext {
             return Err(GlError::InvalidWindowHandle);
         }
 
-        let prev_callback = unsafe { xlib::XSetErrorHandler(Some(err_handler)) };
+        let prev_callback = xlib::XSetErrorHandler(Some(err_handler));
 
         let display = handle.display as *mut xlib::_XDisplay;
 
-        let screen = unsafe { xlib::XDefaultScreen(display) };
+        let screen = xlib::XDefaultScreen(display);
 
         #[rustfmt::skip]
         let fb_attribs = [
@@ -83,15 +83,14 @@ impl GlContext {
         ];
 
         let mut n_configs = 0;
-        let fb_config =
-            unsafe { glx::glXChooseFBConfig(display, screen, fb_attribs.as_ptr(), &mut n_configs) };
+        let fb_config = glx::glXChooseFBConfig(display, screen, fb_attribs.as_ptr(), &mut n_configs);
 
         if n_configs <= 0 {
             return Err(GlError::CreationFailed);
         }
 
         #[allow(non_snake_case)]
-        let glXCreateContextAttribsARB: GlXCreateContextAttribsARB = unsafe {
+        let glXCreateContextAttribsARB: GlXCreateContextAttribsARB = {
             let addr = get_proc_address("glXCreateContextAttribsARB");
             if addr.is_null() {
                 return Err(GlError::CreationFailed);
@@ -101,7 +100,7 @@ impl GlContext {
         };
 
         #[allow(non_snake_case)]
-        let glXSwapIntervalEXT: GlXSwapIntervalEXT = unsafe {
+        let glXSwapIntervalEXT: GlXSwapIntervalEXT = {
             let addr = get_proc_address("glXSwapIntervalEXT");
             if addr.is_null() {
                 return Err(GlError::CreationFailed);
@@ -123,29 +122,23 @@ impl GlContext {
             0,
         ];
 
-        let context = unsafe {
-            glXCreateContextAttribsARB(
-                display,
-                *fb_config,
-                std::ptr::null_mut(),
-                1,
-                ctx_attribs.as_ptr(),
-            )
-        };
+        let context = glXCreateContextAttribsARB(
+            display,
+            *fb_config,
+            std::ptr::null_mut(),
+            1,
+            ctx_attribs.as_ptr(),
+        );
 
         if context.is_null() {
             return Err(GlError::CreationFailed);
         }
 
-        unsafe {
-            glx::glXMakeCurrent(display, handle.window, context);
-            glXSwapIntervalEXT(display, handle.window, config.vsync as i32);
-            glx::glXMakeCurrent(display, 0, std::ptr::null_mut());
-        }
+        glx::glXMakeCurrent(display, handle.window, context);
+        glXSwapIntervalEXT(display, handle.window, config.vsync as i32);
+        glx::glXMakeCurrent(display, 0, std::ptr::null_mut());
 
-        unsafe {
-            xlib::XSetErrorHandler(prev_callback);
-        }
+        xlib::XSetErrorHandler(prev_callback);
 
         Ok(GlContext {
             window: handle.window,
@@ -154,16 +147,12 @@ impl GlContext {
         })
     }
 
-    pub fn make_current(&self) {
-        unsafe {
-            glx::glXMakeCurrent(self.display, self.window, self.context);
-        }
+    pub unsafe fn make_current(&self) {
+        glx::glXMakeCurrent(self.display, self.window, self.context);
     }
 
-    pub fn make_not_current(&self) {
-        unsafe {
-            glx::glXMakeCurrent(self.display, 0, std::ptr::null_mut());
-        }
+    pub unsafe fn make_not_current(&self) {
+        glx::glXMakeCurrent(self.display, 0, std::ptr::null_mut());
     }
 
     pub fn get_proc_address(&self, symbol: &str) -> *const c_void {

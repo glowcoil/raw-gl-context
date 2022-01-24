@@ -72,7 +72,7 @@ pub struct GlContext {
 }
 
 impl GlContext {
-    pub fn create(
+    pub unsafe fn create(
         parent: &impl HasRawWindowHandle,
         config: GlConfig,
     ) -> Result<GlContext, GlError> {
@@ -82,11 +82,11 @@ impl GlContext {
         })
     }
 
-    pub fn make_current(&self) {
+    pub unsafe fn make_current(&self) {
         self.context.make_current();
     }
 
-    pub fn make_not_current(&self) {
+    pub unsafe fn make_not_current(&self) {
         self.context.make_not_current();
     }
 

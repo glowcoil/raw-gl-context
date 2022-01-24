@@ -7,9 +7,11 @@ fn main() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
 
-    let context = GlContext::create(&window, GlConfig::default()).unwrap();
+    let context = unsafe { GlContext::create(&window, GlConfig::default()).unwrap() };
 
-    context.make_current();
+    unsafe {
+        context.make_current();
+    }
 
     gl::load_with(|symbol| context.get_proc_address(symbol) as *const _);
 
@@ -24,7 +26,9 @@ fn main() {
                 *control_flow = ControlFlow::Exit;
             }
             winit::event::Event::RedrawRequested(_) => {
-                context.make_current();
+                unsafe {
+                    context.make_current();
+                }
 
                 unsafe {
                     gl::ClearColor(1.0, 0.0, 1.0, 1.0);
@@ -32,7 +36,10 @@ fn main() {
                 }
 
                 context.swap_buffers();
-                context.make_not_current();
+
+                unsafe {
+                    context.make_not_current();
+                }
             }
             _ => {}
         }
