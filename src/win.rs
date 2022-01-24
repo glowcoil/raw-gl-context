@@ -160,35 +160,35 @@ impl GlContext {
             wglMakeCurrent(hdc_tmp, hglrc_tmp);
 
             #[allow(non_snake_case)]
-            let wglCreateContextAttribsARB: WglCreateContextAttribsARB = {
+            let wglCreateContextAttribsARB: Option<WglCreateContextAttribsARB> = {
                 let symbol = CString::new("wglCreateContextAttribsARB").unwrap();
                 let addr = wglGetProcAddress(symbol.as_ptr());
-                if addr.is_null() {
-                    return Err(GlError::CreationFailed);
+                if !addr.is_null() {
+                    Some(std::mem::transmute(addr))
                 } else {
-                    std::mem::transmute(addr)
+                    None
                 }
             };
 
             #[allow(non_snake_case)]
-            let wglChoosePixelFormatARB: WglChoosePixelFormatARB = {
+            let wglChoosePixelFormatARB: Option<WglChoosePixelFormatARB> = {
                 let symbol = CString::new("wglChoosePixelFormatARB").unwrap();
                 let addr = wglGetProcAddress(symbol.as_ptr());
-                if addr.is_null() {
-                    return Err(GlError::CreationFailed);
+                if !addr.is_null() {
+                    Some(std::mem::transmute(addr))
                 } else {
-                    std::mem::transmute(addr)
+                    None
                 }
             };
 
             #[allow(non_snake_case)]
-            let wglSwapIntervalEXT: WglSwapIntervalEXT = {
+            let wglSwapIntervalEXT: Option<WglSwapIntervalEXT> = {
                 let symbol = CString::new("wglSwapIntervalEXT").unwrap();
                 let addr = wglGetProcAddress(symbol.as_ptr());
-                if addr.is_null() {
-                    return Err(GlError::CreationFailed);
+                if !addr.is_null() {
+                    Some(std::mem::transmute(addr))
                 } else {
-                    std::mem::transmute(addr)
+                    None
                 }
             };
 
@@ -224,7 +224,7 @@ impl GlContext {
 
             let mut pixel_format = 0;
             let mut num_formats = 0;
-            wglChoosePixelFormatARB(
+            wglChoosePixelFormatARB.unwrap()(
                 hdc,
                 pixel_format_attribs.as_ptr(),
                 std::ptr::null(),
@@ -255,7 +255,11 @@ impl GlContext {
                 0
             ];
 
-            let hglrc = wglCreateContextAttribsARB(hdc, std::ptr::null_mut(), ctx_attribs.as_ptr());
+            let hglrc = wglCreateContextAttribsARB.unwrap()(
+                hdc,
+                std::ptr::null_mut(),
+                ctx_attribs.as_ptr(),
+            );
             if hglrc == std::ptr::null_mut() {
                 return Err(GlError::CreationFailed);
             }
@@ -264,7 +268,7 @@ impl GlContext {
             let gl_library = LoadLibraryA(gl_library_name.as_ptr());
 
             wglMakeCurrent(hdc, hglrc);
-            wglSwapIntervalEXT(config.vsync as i32);
+            wglSwapIntervalEXT.unwrap()(config.vsync as i32);
             wglMakeCurrent(hdc, std::ptr::null_mut());
 
             Ok(GlContext {
