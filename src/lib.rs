@@ -63,7 +63,7 @@ pub enum Profile {
 pub enum GlError {
     InvalidWindowHandle,
     VersionNotSupported,
-    CreationFailed,
+    CreationFailed(platform::CreationFailedError),
 }
 
 pub struct GlContext {

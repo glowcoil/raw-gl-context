@@ -20,6 +20,7 @@ use objc::{msg_send, sel, sel_impl};
 
 use crate::{GlConfig, GlError, Profile};
 
+pub type CreationFailedError = ();
 pub struct GlContext {
     view: id,
     context: id,
@@ -80,14 +81,14 @@ impl GlContext {
         let pixel_format = NSOpenGLPixelFormat::alloc(nil).initWithAttributes_(&attrs);
 
         if pixel_format == nil {
-            return Err(GlError::CreationFailed);
+            return Err(GlError::CreationFailed(()));
         }
 
         let view = NSOpenGLView::alloc(nil)
             .initWithFrame_pixelFormat_(parent_view.frame(), pixel_format);
 
         if view == nil {
-            return Err(GlError::CreationFailed);
+            return Err(GlError::CreationFailed(()));
         }
 
         view.setWantsBestResolutionOpenGLSurface_(YES);
