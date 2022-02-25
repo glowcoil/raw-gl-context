@@ -25,4 +25,4 @@ core-foundation = "0.9.1"
 
 [dev-dependencies]
 gl = "0.14.0"
-winit = "0.22.2"
+winit = "0.24"

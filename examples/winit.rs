@@ -15,8 +15,10 @@ fn main() {
 
     gl::load_with(|symbol| context.get_proc_address(symbol) as *const _);
 
+    let now = std::time::Instant::now();
+
     event_loop.run(move |event, _, control_flow| {
-        *control_flow = ControlFlow::Wait;
+        *control_flow = ControlFlow::Poll;
 
         match event {
             winit::event::Event::WindowEvent {
@@ -25,13 +27,16 @@ fn main() {
             } => {
                 *control_flow = ControlFlow::Exit;
             }
+            winit::event::Event::MainEventsCleared => {
+                window.request_redraw();
+            }
             winit::event::Event::RedrawRequested(_) => {
                 unsafe {
                     context.make_current();
                 }
 
                 unsafe {
-                    gl::ClearColor(1.0, 0.0, 1.0, 1.0);
+                    gl::ClearColor(now.elapsed().as_secs_f32().sin() * 0.5 + 0.5, 0.0, 1.0, 1.0);
                     gl::Clear(gl::COLOR_BUFFER_BIT);
                 }
 
