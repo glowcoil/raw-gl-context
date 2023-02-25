@@ -64,6 +64,7 @@ const WGL_FRAMEBUFFER_SRGB_CAPABLE_ARB: i32 = 0x20A9;
 
 type WglSwapIntervalEXT = extern "system" fn(i32) -> i32;
 
+pub type CreationFailedError = ();
 pub struct GlContext {
     hwnd: HWND,
     hdc: HDC,
@@ -109,7 +110,7 @@ impl GlContext {
 
         let class = RegisterClassW(&wnd_class);
         if class == 0 {
-            return Err(GlError::CreationFailed);
+            return Err(GlError::CreationFailed(()));
         }
 
         let hwnd_tmp = CreateWindowExW(
@@ -128,7 +129,7 @@ impl GlContext {
         );
 
         if hwnd_tmp.is_null() {
-            return Err(GlError::CreationFailed);
+            return Err(GlError::CreationFailed(()));
         }
 
         let hdc_tmp = GetDC(hwnd_tmp);
@@ -153,7 +154,7 @@ impl GlContext {
             ReleaseDC(hwnd_tmp, hdc_tmp);
             UnregisterClassW(class as *const WCHAR, hinstance);
             DestroyWindow(hwnd_tmp);
-            return Err(GlError::CreationFailed);
+            return Err(GlError::CreationFailed(()));
         }
 
         wglMakeCurrent(hdc_tmp, hglrc_tmp);
@@ -260,7 +261,7 @@ impl GlContext {
             ctx_attribs.as_ptr(),
         );
         if hglrc == std::ptr::null_mut() {
-            return Err(GlError::CreationFailed);
+            return Err(GlError::CreationFailed(()));
         }
 
         let gl_library_name = CString::new("opengl32.dll").unwrap();
