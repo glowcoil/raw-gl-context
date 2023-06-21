@@ -60,10 +60,30 @@ pub enum Profile {
 }
 
 #[derive(Debug)]
-pub enum GlError {
+pub enum GLContextCreateError
+{
     InvalidWindowHandle,
     VersionNotSupported,
     CreationFailed,
+}
+
+impl std::error::Error for GLContextCreateError {}
+
+impl std::fmt::Display for GLContextCreateError
+{
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
+    {
+        let preamble = "Could not create openGL context: ";
+        match self
+        {
+            Self::InvalidWindowHandle
+                => write!(formatter, "{preamble} invalid window handle"),
+            Self::VersionNotSupported
+                => write!(formatter, "{preamble} unsupported version"),
+            Self::CreationFailed
+                => write!(formatter, "{preamble} unknown error")
+        }
+    }
 }
 
 pub struct GlContext {
@@ -75,7 +95,7 @@ impl GlContext {
     pub unsafe fn create(
         parent: &impl HasRawWindowHandle,
         config: GlConfig,
-    ) -> Result<GlContext, GlError> {
+    ) -> Result<GlContext, GLContextCreateError> {
         platform::GlContext::create(parent, config).map(|context| GlContext {
             context,
             phantom: PhantomData,

@@ -18,7 +18,7 @@ use winapi::um::winuser::{
     UnregisterClassW, CS_OWNDC, CW_USEDEFAULT, WNDCLASSW,
 };
 
-use crate::{GlConfig, GlError, Profile};
+use crate::{GlConfig, GLContextCreateError, Profile};
 
 // See https://www.khronos.org/registry/OpenGL/extensions/ARB/WGL_ARB_create_context.txt
 
@@ -79,15 +79,15 @@ impl GlContext {
     pub unsafe fn create(
         parent: &impl HasRawWindowHandle,
         config: GlConfig,
-    ) -> Result<GlContext, GlError> {
+    ) -> Result<GlContext, GLContextCreateError> {
         let handle = if let RawWindowHandle::Win32(handle) = parent.raw_window_handle() {
             handle
         } else {
-            return Err(GlError::InvalidWindowHandle);
+            return Err(GLContextCreateError::InvalidWindowHandle);
         };
 
         if handle.hwnd.is_null() {
-            return Err(GlError::InvalidWindowHandle);
+            return Err(GLContextCreateError::InvalidWindowHandle);
         }
 
         // Create temporary window and context to load function pointers
@@ -109,7 +109,7 @@ impl GlContext {
 
         let class = RegisterClassW(&wnd_class);
         if class == 0 {
-            return Err(GlError::CreationFailed);
+            return Err(GLContextCreateError::CreationFailed);
         }
 
         let hwnd_tmp = CreateWindowExW(
@@ -128,7 +128,7 @@ impl GlContext {
         );
 
         if hwnd_tmp.is_null() {
-            return Err(GlError::CreationFailed);
+            return Err(GLContextCreateError::CreationFailed);
         }
 
         let hdc_tmp = GetDC(hwnd_tmp);
@@ -153,7 +153,7 @@ impl GlContext {
             ReleaseDC(hwnd_tmp, hdc_tmp);
             UnregisterClassW(class as *const WCHAR, hinstance);
             DestroyWindow(hwnd_tmp);
-            return Err(GlError::CreationFailed);
+            return Err(GLContextCreateError::CreationFailed);
         }
 
         wglMakeCurrent(hdc_tmp, hglrc_tmp);
@@ -260,7 +260,7 @@ impl GlContext {
             ctx_attribs.as_ptr(),
         );
         if hglrc == std::ptr::null_mut() {
-            return Err(GlError::CreationFailed);
+            return Err(GLContextCreateError::CreationFailed);
         }
 
         let gl_library_name = CString::new("opengl32.dll").unwrap();
