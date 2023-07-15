@@ -37,12 +37,12 @@ pub struct GlConfig {
 impl Default for GlConfig {
     fn default() -> Self {
         GlConfig {
-            version: (3, 2),
             #[cfg(target_os = "macos")]
-            profile: Profile::Compatibility,
+            version: (4, 1),
             #[cfg(target_os = "windows")]
-            profile: Profile::Core,
+            version: (3, 2),
             #[cfg(target_os = "linux")]
+            version: (3, 2),
             profile: Profile::Core,
             red_bits: 8,
             blue_bits: 8,
