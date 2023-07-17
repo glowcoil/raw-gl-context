@@ -40,9 +40,6 @@ impl Default for GlConfig {
             version: (3, 2),
             #[cfg(target_os = "macos")]
             profile: Profile::Compatibility,
-            #[cfg(target_os = "windows")]
-            profile: Profile::Core,
-            #[cfg(target_os = "linux")]
             profile: Profile::Core,
             red_bits: 8,
             blue_bits: 8,
