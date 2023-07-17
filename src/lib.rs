@@ -38,8 +38,6 @@ impl Default for GlConfig {
     fn default() -> Self {
         GlConfig {
             version: (3, 2),
-            #[cfg(target_os = "macos")]
-            profile: Profile::Compatibility,
             profile: Profile::Core,
             red_bits: 8,
             blue_bits: 8,
