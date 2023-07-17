@@ -1,7 +1,7 @@
 use std::ffi::{c_void, CString};
 use std::os::raw::{c_int, c_ulong};
 
-use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
+use raw_window_handle::{HasRawWindowHandle, RawWindowHandle, RawDisplayHandle, HasRawDisplayHandle};
 
 use x11::glx;
 use x11::xlib;
@@ -44,22 +44,28 @@ pub struct GlContext {
 
 impl GlContext {
     pub unsafe fn create(
-        parent: &impl HasRawWindowHandle,
+        parent: &(impl HasRawWindowHandle + HasRawDisplayHandle),
         config: GlConfig,
     ) -> Result<GlContext, GlError> {
-        let handle = if let RawWindowHandle::Xlib(handle) = parent.raw_window_handle() {
+        let win_handle = if let RawWindowHandle::Xlib(handle) = parent.raw_window_handle() {
             handle
         } else {
             return Err(GlError::InvalidWindowHandle);
         };
 
-        if handle.display.is_null() {
+        let display_handle = if let RawDisplayHandle::Xlib(handle) = parent.raw_display_handle() {
+            handle
+        } else {
+            return Err(GlError::InvalidWindowHandle);
+        };
+
+        if display_handle.display.is_null() {
             return Err(GlError::InvalidWindowHandle);
         }
 
         let prev_callback = xlib::XSetErrorHandler(Some(err_handler));
 
-        let display = handle.display as *mut xlib::_XDisplay;
+        let display = display_handle.display as *mut xlib::_XDisplay;
 
         let screen = xlib::XDefaultScreen(display);
 
@@ -134,14 +140,14 @@ impl GlContext {
             return Err(GlError::CreationFailed);
         }
 
-        glx::glXMakeCurrent(display, handle.window, context);
-        glXSwapIntervalEXT(display, handle.window, config.vsync as i32);
+        glx::glXMakeCurrent(display, win_handle.window, context);
+        glXSwapIntervalEXT(display, win_handle.window, config.vsync as i32);
         glx::glXMakeCurrent(display, 0, std::ptr::null_mut());
 
         xlib::XSetErrorHandler(prev_callback);
 
         Ok(GlContext {
-            window: handle.window,
+            window: win_handle.window,
             display,
             context,
         })
